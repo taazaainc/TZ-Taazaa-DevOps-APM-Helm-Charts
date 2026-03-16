@@ -1,0 +1,43 @@
+# qa environment — image tags updated automatically by CI pipeline
+# DO NOT edit image tags manually; they are managed by the build pipeline.
+
+backend:
+  image:
+    repository: tcr.taazaa.cloud/dev-apm/backend
+    tag: "qa-0"
+
+ui:
+  image:
+    repository: tcr.taazaa.cloud/dev-apm/ui
+    tag: "qa-0"
+
+k8swatcher:
+  image:
+    repository: tcr.taazaa.cloud/dev-apm/k8swatcher
+    tag: "qa-0"
+
+ingress:
+  enabled: true
+  host: dev-apm.qa.internal
+
+backend:
+  replicas: 1
+  autoscaling:
+    enabled: false
+
+ui:
+  replicas: 1
+
+"victoria-metrics-single":
+  server:
+    persistentVolume:
+      size: 20Gi
+
+clickhouse:
+  storage:
+    size: 50Gi
+
+postgresql:
+  primary:
+    persistence:
+      size: 10Gi

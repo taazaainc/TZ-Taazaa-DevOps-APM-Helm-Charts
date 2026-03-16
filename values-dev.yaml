@@ -1,0 +1,43 @@
+# dev environment — image tags updated automatically by CI pipeline
+# DO NOT edit image tags manually; they are managed by the build pipeline.
+
+backend:
+  image:
+    repository: tcr.taazaa.cloud/dev-apm/backend
+    tag: "dev-0"
+
+ui:
+  image:
+    repository: tcr.taazaa.cloud/dev-apm/ui
+    tag: "dev-0"
+
+k8swatcher:
+  image:
+    repository: tcr.taazaa.cloud/dev-apm/k8swatcher
+    tag: "dev-0"
+
+ingress:
+  enabled: true
+  host: dev-apm.dev.internal
+
+backend:
+  replicas: 1
+  autoscaling:
+    enabled: false
+
+ui:
+  replicas: 1
+
+"victoria-metrics-single":
+  server:
+    persistentVolume:
+      size: 10Gi
+
+clickhouse:
+  storage:
+    size: 20Gi
+
+postgresql:
+  primary:
+    persistence:
+      size: 5Gi

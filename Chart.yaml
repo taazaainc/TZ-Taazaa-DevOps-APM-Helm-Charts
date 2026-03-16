@@ -1,0 +1,70 @@
+apiVersion: v2
+name: dev-apm
+description: >
+  Kubernetes-native APM — eBPF auto-instrumentation via Grafana Beyla,
+  metrics via VictoriaMetrics, traces/logs via ClickHouse, continuous profiling
+  via Pyroscope, RUM, SLOs, cost monitoring, and a full React dashboard.
+  Zero code changes required in monitored applications.
+type: application
+version: 2.0.0
+appVersion: "2.0.0"
+keywords:
+  - observability
+  - apm
+  - ebpf
+  - kubernetes
+  - monitoring
+  - tracing
+  - logging
+  - profiling
+  - rum
+  - slo
+home: https://github.com/your-org/dev-apm
+sources:
+  - https://github.com/your-org/dev-apm
+maintainers:
+  - name: dev-apm team
+    email: team@dev-apm.io
+annotations:
+  category: Monitoring
+
+# ── Sub-chart dependencies ────────────────────────────────────────────────────
+# After editing run: helm dependency update ./helm
+dependencies:
+
+  # Grafana Beyla — eBPF auto-instrumentation (replaces hand-written sensor)
+  # Covers HTTP/1.1, HTTP/2, gRPC, SQL, Redis, Kafka, DNS — including TLS via uprobe
+  - name: beyla
+    version: "1.4.2"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: beyla.enabled
+
+  # VictoriaMetrics single-node — Prometheus-compatible metrics TSDB
+  - name: victoria-metrics-single
+    version: "0.9.23"
+    repository: "https://victoriametrics.github.io/helm-charts/"
+    condition: victoria-metrics-single.enabled
+
+  # ClickHouse Operator (Altinity) — manages ClickhouseInstallation CRD
+  - name: clickhouse-operator
+    version: "0.23.5"
+    repository: "https://docs.altinity.com/clickhouse-operator/"
+    condition: clickhouse-operator.enabled
+
+  # OpenTelemetry Collector — telemetry gateway pipeline
+  - name: opentelemetry-collector
+    version: "0.110.0"
+    repository: "https://open-telemetry.github.io/opentelemetry-helm-charts"
+    condition: opentelemetry-collector.enabled
+
+  # Grafana Pyroscope — continuous profiling with flamegraphs (opt-in)
+  - name: pyroscope
+    version: "1.7.1"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: pyroscope.enabled
+
+  # PostgreSQL (Bitnami) — mutable config store: alert rules, dashboards, SLOs, RBAC
+  - name: postgresql
+    version: "15.5.23"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled

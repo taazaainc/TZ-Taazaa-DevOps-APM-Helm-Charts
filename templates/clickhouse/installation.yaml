@@ -1,0 +1,69 @@
+{{- if .Values.clickhouse.enabled }}
+# ClickhouseInstallation CRD — managed by the Altinity clickhouse-operator sub-chart.
+# This replaces the hand-written StatefulSet from v1.
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-clickhouse
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+spec:
+  defaults:
+    storageManagement:
+      provisioner: Operator
+  configuration:
+    users:
+      {{ .Values.clickhouse.auth.username }}/password: {{ .Values.clickhouse.auth.password | quote }}
+      {{ .Values.clickhouse.auth.username }}/networks/ip:
+        - "0.0.0.0/0"
+      {{ .Values.clickhouse.auth.username }}/profile: default
+      {{ .Values.clickhouse.auth.username }}/quota: default
+    profiles:
+      default/max_memory_usage: "10000000000"
+      default/use_uncompressed_cache: "0"
+    quotas:
+      default/interval/duration: "3600"
+    settings:
+      max_connections: "4096"
+      max_concurrent_queries: "100"
+      logger/level: warning
+      logger/console: "1"
+    clusters:
+      - name: {{ .Values.clickhouse.clusterName }}
+        layout:
+          shardsCount: {{ .Values.clickhouse.shardsCount }}
+          replicasCount: {{ .Values.clickhouse.replicasCount }}
+        templates:
+          podTemplate: pod-template
+          dataVolumeClaimTemplate: data-volume
+
+  templates:
+    podTemplates:
+      - name: pod-template
+        spec:
+          containers:
+            - name: clickhouse
+              image: clickhouse/clickhouse-server:24.4
+              resources:
+                requests:
+                  cpu: 500m
+                  memory: 1Gi
+                limits:
+                  cpu: 4000m
+                  memory: 8Gi
+
+    volumeClaimTemplates:
+      - name: data-volume
+        spec:
+          {{- if .Values.clickhouse.storage.storageClass }}
+          storageClassName: {{ .Values.clickhouse.storage.storageClass }}
+          {{- else if .Values.global.storageClass }}
+          storageClassName: {{ .Values.global.storageClass }}
+          {{- end }}
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: {{ .Values.clickhouse.storage.size }}
+{{- end }}

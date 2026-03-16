@@ -1,0 +1,195 @@
+{{- if .Values.collector.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-collector-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      pprof:
+        endpoint: 0.0.0.0:1777
+
+    receivers:
+      # OTLP from the eBPF sensor and any instrumented apps
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+      # Scrape Prometheus metrics from K8s components
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'kubernetes-nodes'
+              scheme: https
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: true
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              kubernetes_sd_configs:
+                - role: node
+              relabel_configs:
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+                - target_label: __address__
+                  replacement: kubernetes.default.svc:443
+                - source_labels: [__meta_kubernetes_node_name]
+                  regex: (.+)
+                  target_label: __metrics_path__
+                  replacement: /api/v1/nodes/${1}/proxy/metrics
+
+            - job_name: 'kubernetes-cadvisor'
+              scheme: https
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: true
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              kubernetes_sd_configs:
+                - role: node
+              relabel_configs:
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+                - target_label: __address__
+                  replacement: kubernetes.default.svc:443
+                - source_labels: [__meta_kubernetes_node_name]
+                  regex: (.+)
+                  target_label: __metrics_path__
+                  replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+            - job_name: 'kubernetes-pods'
+              kubernetes_sd_configs:
+                - role: pod
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: true
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                  action: replace
+                  target_label: __metrics_path__
+                  regex: (.+)
+                - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                  action: replace
+                  regex: ([^:]+)(?::\d+)?;(\d+)
+                  replacement: $1:$2
+                  target_label: __address__
+                - action: labelmap
+                  regex: __meta_kubernetes_pod_label_(.+)
+                - source_labels: [__meta_kubernetes_namespace]
+                  action: replace
+                  target_label: kubernetes_namespace
+                - source_labels: [__meta_kubernetes_pod_name]
+                  action: replace
+                  target_label: kubernetes_pod_name
+
+      # K8s cluster events
+      k8s_events:
+        namespaces: []  # empty = all namespaces
+        auth_type: serviceAccount
+
+    processors:
+      # Add K8s metadata to all telemetry
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.replicaset.name
+            - k8s.daemonset.name
+            - k8s.statefulset.name
+            - k8s.job.name
+            - container.image.name
+            - container.image.tag
+          labels:
+            - tag_name: service.name
+              key: app.kubernetes.io/name
+              from: pod
+            - tag_name: app
+              key: app
+              from: pod
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.ip
+          - sources:
+              - from: connection
+                name: ip
+
+      # Batch for efficiency
+      batch:
+        timeout: 5s
+        send_batch_size: 512
+        send_batch_max_size: 1024
+
+      # Drop high-cardinality spans from internal K8s components
+      filter/drop_internal:
+        spans:
+          exclude:
+            match_type: regexp
+            services:
+              - "kube-.*"
+              - "coredns"
+
+      # Memory limiter to prevent OOM
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 20
+
+      # Resource attributes
+      resource:
+        attributes:
+          - key: deployment.environment
+            value: production
+            action: upsert
+
+    exporters:
+      # Metrics → VictoriaMetrics (Prometheus remote write)
+      prometheusremotewrite:
+        endpoint: "http://{{ include "dev-apm.fullname" . }}-victoriametrics:8428/api/v1/write"
+        tls:
+          insecure: true
+        resource_to_telemetry_conversion:
+          enabled: true
+        add_metric_suffixes: false
+
+      # Traces & Logs → ClickHouse via OTLP HTTP
+      otlphttp/clickhouse:
+        endpoint: "http://{{ include "dev-apm.fullname" . }}-clickhouse-ingestor:4318"
+        tls:
+          insecure: true
+
+      # Debug (disable in production)
+      # logging:
+      #   verbosity: detailed
+
+    service:
+      extensions: [health_check, pprof]
+      pipelines:
+        metrics:
+          receivers:  [otlp, prometheus]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters:  [prometheusremotewrite]
+
+        traces:
+          receivers:  [otlp]
+          processors: [memory_limiter, k8sattributes, filter/drop_internal, batch]
+          exporters:  [otlphttp/clickhouse]
+
+        logs:
+          receivers:  [otlp, k8s_events]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters:  [otlphttp/clickhouse]
+{{- end }}
