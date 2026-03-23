@@ -1,0 +1,43 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "dev-apm.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          # API routes go to backend
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dev-apm.fullname" . }}-backend
+                port:
+                  name: http
+          # Everything else goes to the UI
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dev-apm.fullname" . }}-ui
+                port:
+                  name: http
+{{- end }}

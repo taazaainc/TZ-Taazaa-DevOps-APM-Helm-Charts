@@ -1,0 +1,406 @@
+# dev-apm Helm values (v2 — Option B: sub-chart dependencies)
+# Run: helm dependency update ./helm  before first install
+
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Feature flags
+features:
+  alertRules:         true
+  notifications:      true
+  customDashboards:   true
+  slo:                true
+  costMonitoring:     true
+  profiling:          false   # also set pyroscope.enabled=true
+  rum:                false   # also set rum.ingest.enabled=true
+  anomalyDetection:   true
+  logPipelines:       true
+  deploymentTracking: true
+  llmObservability:   true
+  rbac:               true
+
+# Auth
+auth:
+  enabled: true
+  jwtSecret: ""
+  existingSecret: ""
+  sessionDuration: "24h"
+  adminUser:
+    email: "admin@example.com"
+    password: "changeme"
+
+# Backend API
+backend:
+  enabled: true
+  image:
+    repository: ghcr.io/your-org/dev-apm-backend
+    tag: "2.0.0"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# Dashboard UI
+ui:
+  enabled: true
+  image:
+    repository: ghcr.io/your-org/dev-apm-ui
+    tag: "2.0.0"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 80
+
+# RUM Ingest service
+rum:
+  ingest:
+    enabled: false
+    image:
+      repository: ghcr.io/your-org/dev-apm-rum-ingest
+      tag: "2.0.0"
+      pullPolicy: IfNotPresent
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    service:
+      type: ClusterIP
+      port: 8090
+
+# K8s Watcher
+k8swatcher:
+  enabled: true
+  image:
+    repository: ghcr.io/your-org/dev-apm-k8swatcher
+    tag: "2.0.0"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Ingress
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  host: dev-apm.example.com
+  tls:
+    enabled: false
+    secretName: dev-apm-tls
+
+# RBAC / ServiceAccount
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  interval: 30s
+  labels: {}
+
+podDisruptionBudget:
+  backend:
+    enabled: false
+    minAvailable: 1
+  ui:
+    enabled: false
+    minAvailable: 1
+
+networkPolicy:
+  enabled: false
+
+# =============================================================================
+# SUB-CHART PASSTHROUGH VALUES (keys match dependency name in Chart.yaml)
+# =============================================================================
+
+# Grafana Beyla — eBPF sensor (replaces hand-written sensor DaemonSet)
+# Covers HTTP/1.1, HTTP/2, gRPC, SQL, Redis, Kafka, DNS + TLS via uprobe
+beyla:
+  enabled: true
+  config:
+    discovery:
+      services:
+        - k8s_namespace: ".*"
+    otel:
+      metrics_export:
+        interval: 15s
+      traces_export: {}
+    attributes:
+      kubernetes:
+        enable: true
+  securityContext:
+    privileged: true
+    capabilities:
+      add:
+        - SYS_ADMIN
+        - SYS_PTRACE
+        - NET_ADMIN
+        - BPF
+  hostPID: true
+  hostNetwork: true
+  tolerations:
+    - operator: Exists
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# VictoriaMetrics single-node
+"victoria-metrics-single":
+  enabled: true
+  server:
+    retentionPeriod: "30"
+    extraArgs:
+      search.maxQueryDuration: 60s
+      memory.allowedPercent: "80"
+      search.maxConcurrentRequests: "8"
+    persistentVolume:
+      enabled: true
+      storageClass: ""
+      size: 50Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    service:
+      type: ClusterIP
+      servicePort: 8428
+
+# ClickHouse Operator (Altinity)
+clickhouse-operator:
+  enabled: true
+
+# ClickHouse installation config (read by templates/clickhouse/installation.yaml)
+clickhouse:
+  enabled: true
+  clusterName: devapm
+  shardsCount: 1
+  replicasCount: 1
+  storage:
+    size: 100Gi
+    storageClass: ""
+  auth:
+    database: devapm
+    username: default
+    password: ""
+    existingSecret: ""
+    existingSecretKey: password
+
+# OpenTelemetry Collector
+opentelemetry-collector:
+  enabled: true
+  mode: deployment
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  config:
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: kubernetes-nodes
+              scheme: https
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: true
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              kubernetes_sd_configs:
+                - role: node
+              relabel_configs:
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+                - target_label: __address__
+                  replacement: kubernetes.default.svc:443
+                - source_labels: [__meta_kubernetes_node_name]
+                  regex: (.+)
+                  target_label: __metrics_path__
+                  replacement: /api/v1/nodes/$1/proxy/metrics
+            - job_name: kubernetes-cadvisor
+              scheme: https
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: true
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              kubernetes_sd_configs:
+                - role: node
+              relabel_configs:
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+                - target_label: __address__
+                  replacement: kubernetes.default.svc:443
+                - source_labels: [__meta_kubernetes_node_name]
+                  regex: (.+)
+                  target_label: __metrics_path__
+                  replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+            - job_name: kubernetes-pods
+              kubernetes_sd_configs:
+                - role: pod
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: "true"
+                - action: labelmap
+                  regex: __meta_kubernetes_pod_label_(.+)
+                - source_labels: [__meta_kubernetes_namespace]
+                  action: replace
+                  target_label: k8s_namespace_name
+                - source_labels: [__meta_kubernetes_pod_name]
+                  action: replace
+                  target_label: k8s_pod_name
+      k8s_events:
+        namespaces: []
+    processors:
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.replicaset.name
+            - k8s.daemonset.name
+            - k8s.statefulset.name
+            - container.image.name
+            - container.image.tag
+          labels:
+            - tag_name: service.name
+              key: app.kubernetes.io/name
+              from: pod
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.ip
+          - sources:
+              - from: connection
+                name: ip
+      batch:
+        timeout: 5s
+        send_batch_size: 512
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 20
+    exporters:
+      prometheusremotewrite:
+        endpoint: "http://dev-apm-victoria-metrics-single-server:8428/api/v1/write"
+        tls:
+          insecure: true
+        resource_to_telemetry_conversion:
+          enabled: true
+      otlphttp/backend:
+        endpoint: "http://dev-apm-backend:8080/otlp"
+        tls:
+          insecure: true
+    service:
+      extensions: [health_check]
+      pipelines:
+        metrics:
+          receivers:  [otlp, prometheus]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters:  [prometheusremotewrite]
+        traces:
+          receivers:  [otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters:  [otlphttp/backend]
+        logs:
+          receivers:  [otlp, k8s_events]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters:  [otlphttp/backend]
+
+# Grafana Pyroscope — continuous profiling (opt-in)
+pyroscope:
+  enabled: false
+  pyroscope:
+    replicationFactor: 1
+  minio:
+    enabled: false
+  storage:
+    backend: filesystem
+
+# PostgreSQL (Bitnami) — mutable config store
+postgresql:
+  enabled: true
+  auth:
+    database: devapm
+    username: devapm
+    password: ""
+    existingSecret: ""
+  primary:
+    persistence:
+      enabled: true
+      storageClass: ""
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# Legacy sensor — archived, use beyla instead
+sensor:
+  enabled: false
+  image:
+    repository: ghcr.io/your-org/dev-apm-sensor
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent

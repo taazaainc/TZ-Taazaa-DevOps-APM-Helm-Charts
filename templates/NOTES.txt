@@ -1,0 +1,51 @@
+╔══════════════════════════════════════════════════════╗
+║            dev-apm successfully deployed!            ║
+╚══════════════════════════════════════════════════════╝
+
+Version: {{ .Chart.AppVersion }}
+Namespace: {{ .Release.Namespace }}
+
+COMPONENTS DEPLOYED:
+{{- if .Values.sensor.enabled }}
+  ✓ eBPF Sensor      — DaemonSet (one pod per node)
+{{- end }}
+{{- if .Values.collector.enabled }}
+  ✓ OTel Collector   — {{ .Values.collector.replicas }} replica(s)
+{{- end }}
+{{- if .Values.victoriametrics.enabled }}
+  ✓ VictoriaMetrics  — {{ .Values.victoriametrics.replicas }} replica(s), {{ .Values.victoriametrics.retentionPeriod }} retention
+{{- end }}
+{{- if .Values.clickhouse.enabled }}
+  ✓ ClickHouse       — {{ .Values.clickhouse.replicas }} replica(s)
+{{- end }}
+{{- if .Values.backend.enabled }}
+  ✓ Backend API      — {{ .Values.backend.replicas }} replica(s)
+{{- end }}
+{{- if .Values.ui.enabled }}
+  ✓ Dashboard UI     — {{ .Values.ui.replicas }} replica(s)
+{{- end }}
+
+ACCESS THE DASHBOARD:
+{{- if .Values.ingress.enabled }}
+  URL: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}
+{{- else }}
+  Port-forward the UI:
+  kubectl port-forward svc/{{ include "dev-apm.fullname" . }}-ui 3000:80 -n {{ .Release.Namespace }}
+  Then open: http://localhost:3000
+
+  Port-forward the API:
+  kubectl port-forward svc/{{ include "dev-apm.fullname" . }}-backend 8080:8080 -n {{ .Release.Namespace }}
+{{- end }}
+
+SEND TELEMETRY:
+  OTel Collector endpoint (from within cluster):
+  gRPC: {{ include "dev-apm.fullname" . }}-collector:4317
+  HTTP: {{ include "dev-apm.fullname" . }}-collector:4318
+
+VERIFY DEPLOYMENT:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+TROUBLESHOOT SENSOR (must be privileged, requires Linux kernel 5.8+):
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=sensor --tail=50
+
+DOCS: https://github.com/your-org/dev-apm

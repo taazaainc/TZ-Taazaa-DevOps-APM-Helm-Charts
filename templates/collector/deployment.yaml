@@ -1,0 +1,107 @@
+{{- if .Values.collector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-collector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+spec:
+  replicas: {{ .Values.collector.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dev-apm.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: collector
+  template:
+    metadata:
+      labels:
+        {{- include "dev-apm.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: collector
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/collector/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "dev-apm.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: collector
+          image: {{ include "dev-apm.image" (dict "global" .Values.global "image" .Values.collector.image) }}
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          args:
+            - "--config=/etc/otelcol/config.yaml"
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.collector.service.metricsPort }}
+              protocol: TCP
+            {{- if .Values.collector.prometheusExporter.enabled }}
+            - name: prom-export
+              containerPort: {{ .Values.collector.prometheusExporter.port }}
+              protocol: TCP
+            {{- end }}
+            - name: health
+              containerPort: 13133
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+          resources:
+            {{- toYaml .Values.collector.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "dev-apm.fullname" . }}-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-collector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+spec:
+  type: {{ .Values.collector.service.type }}
+  selector:
+    {{- include "dev-apm.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+  ports:
+    - name: otlp-grpc
+      port: {{ .Values.collector.service.otlpGrpcPort }}
+      targetPort: otlp-grpc
+      protocol: TCP
+    - name: otlp-http
+      port: {{ .Values.collector.service.otlpHttpPort }}
+      targetPort: otlp-http
+      protocol: TCP
+    - name: metrics
+      port: {{ .Values.collector.service.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+    {{- if .Values.collector.prometheusExporter.enabled }}
+    - name: prom-export
+      port: {{ .Values.collector.prometheusExporter.port }}
+      targetPort: prom-export
+      protocol: TCP
+    {{- end }}
+{{- end }}

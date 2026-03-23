@@ -1,0 +1,172 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-clickhouse
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+spec:
+  replicas: {{ .Values.clickhouse.replicas }}
+  serviceName: {{ include "dev-apm.fullname" . }}-clickhouse-headless
+  selector:
+    matchLabels:
+      {{- include "dev-apm.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: clickhouse
+  template:
+    metadata:
+      labels:
+        {{- include "dev-apm.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: clickhouse
+    spec:
+      serviceAccountName: {{ include "dev-apm.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        fsGroup: 101
+      containers:
+        - name: clickhouse
+          image: {{ include "dev-apm.image" (dict "global" .Values.global "image" .Values.clickhouse.image) }}
+          imagePullPolicy: {{ .Values.clickhouse.image.pullPolicy }}
+          ports:
+            - name: tcp
+              containerPort: 9000
+              protocol: TCP
+            - name: http
+              containerPort: 8123
+              protocol: TCP
+          env:
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.auth.database | quote }}
+            - name: CLICKHOUSE_USER
+              value: {{ .Values.clickhouse.auth.username | quote }}
+            - name: CLICKHOUSE_PASSWORD
+              {{- include "dev-apm.clickhousePassword" . | nindent 14 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+            - name: config
+              mountPath: /etc/clickhouse-server/config.d/custom.xml
+              subPath: config.xml
+          resources:
+            {{- toYaml .Values.clickhouse.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "dev-apm.fullname" . }}-clickhouse-config
+  {{- if .Values.clickhouse.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        {{- if .Values.clickhouse.persistence.storageClass }}
+        storageClassName: {{ .Values.clickhouse.persistence.storageClass }}
+        {{- end }}
+        accessModes:
+          - {{ .Values.clickhouse.persistence.accessMode }}
+        resources:
+          requests:
+            storage: {{ .Values.clickhouse.persistence.size }}
+  {{- else }}
+      - name: data
+        emptyDir: {}
+  {{- end }}
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-clickhouse-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+data:
+  config.xml: |
+    <clickhouse>
+      <logger>
+        <level>warning</level>
+        <console>1</console>
+      </logger>
+      <http_port>8123</http_port>
+      <tcp_port>9000</tcp_port>
+      <max_connections>4096</max_connections>
+      <keep_alive_timeout>3</keep_alive_timeout>
+      <max_concurrent_queries>100</max_concurrent_queries>
+      <uncompressed_cache_size>8589934592</uncompressed_cache_size>
+      <mark_cache_size>5368709120</mark_cache_size>
+      <path>/var/lib/clickhouse/</path>
+      <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+      <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+      </query_log>
+    </clickhouse>
+
+---
+
+# Headless service for StatefulSet DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-clickhouse-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+spec:
+  clusterIP: None
+  selector:
+    {{- include "dev-apm.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+  ports:
+    - name: tcp
+      port: 9000
+    - name: http
+      port: 8123
+
+---
+
+# ClusterIP service for application access
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-clickhouse
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+spec:
+  type: {{ .Values.clickhouse.service.type }}
+  selector:
+    {{- include "dev-apm.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+  ports:
+    - name: tcp
+      port: {{ .Values.clickhouse.service.tcpPort }}
+      targetPort: tcp
+      protocol: TCP
+    - name: http
+      port: {{ .Values.clickhouse.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+{{- end }}

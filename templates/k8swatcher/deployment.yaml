@@ -1,0 +1,67 @@
+{{- if .Values.k8swatcher.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dev-apm.fullname" . }}-k8swatcher
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dev-apm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: k8swatcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "dev-apm.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: k8swatcher
+  template:
+    metadata:
+      labels:
+        {{- include "dev-apm.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: k8swatcher
+    spec:
+      serviceAccountName: {{ include "dev-apm.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: k8swatcher
+          image: {{ include "dev-apm.image" (dict "global" .Values.global "image" .Values.k8swatcher.image) }}
+          imagePullPolicy: {{ .Values.k8swatcher.image.pullPolicy }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: BACKEND_URL
+              value: "http://{{ include "dev-apm.fullname" . }}-backend:{{ .Values.backend.service.port }}"
+            - name: CLICKHOUSE_ADDR
+              value: "chi-{{ include "dev-apm.fullname" . }}-clickhouse-{{ .Values.clickhouse.clusterName }}-0-0:9000"
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.auth.database | quote }}
+            - name: CLICKHOUSE_USER
+              value: {{ .Values.clickhouse.auth.username | quote }}
+            - name: CLICKHOUSE_PASSWORD
+              {{- include "dev-apm.clickhousePassword" . | nindent 14 }}
+          resources:
+            {{- toYaml .Values.k8swatcher.resources | nindent 12 }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 9091
+            initialDelaySeconds: 15
+            periodSeconds: 30
+{{- end }}

@@ -1,0 +1,58 @@
+# production environment — image tags updated automatically by CI pipeline
+# DO NOT edit image tags manually; they are managed by the build pipeline.
+
+backend:
+  image:
+    repository: tcr.taazaa.cloud/apm-prod/backend
+    tag: "latest"
+
+ui:
+  image:
+    repository: tcr.taazaa.cloud/apm-prod/ui
+    tag: "latest"
+
+k8swatcher:
+  image:
+    repository: tcr.taazaa.cloud/apm-prod/k8swatcher
+    tag: "latest"
+
+ingress:
+  enabled: true
+  host: dev-apm.example.com
+  tls:
+    enabled: true
+    secretName: dev-apm-tls
+
+backend:
+  replicas: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+ui:
+  replicas: 2
+
+podDisruptionBudget:
+  backend:
+    enabled: true
+    minAvailable: 1
+  ui:
+    enabled: true
+    minAvailable: 1
+
+"victoria-metrics-single":
+  server:
+    persistentVolume:
+      size: 50Gi
+
+clickhouse:
+  storage:
+    size: 100Gi
+  replicasCount: 2
+
+postgresql:
+  primary:
+    persistence:
+      size: 10Gi
