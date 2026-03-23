@@ -105,6 +105,7 @@ jobs:
             --set "global.registry.password=$TCR_PASSWORD" \
             --debug
 
+
       - name: Helm deploy
         if: env.DRY_RUN == 'false'
         run: |
@@ -115,9 +116,6 @@ jobs:
             --values ./$VALUES_FILE \
             --set "global.registry.username=$TCR_USERNAME" \
             --set "global.registry.password=$TCR_PASSWORD" \
-            --set "auth.adminUser.password=${{ secrets.DEV_ADMIN_PASSWORD }}" \
-            --set "clickhouse.auth.password=${{ secrets.DEV_CLICKHOUSE_PASSWORD }}" \
-            --set "postgresql.auth.password=${{ secrets.DEV_POSTGRES_PASSWORD }}" \
             --wait --timeout 15m \
             --atomic
           echo "✅ Deployed dev-apm to $ENVIRONMENT"

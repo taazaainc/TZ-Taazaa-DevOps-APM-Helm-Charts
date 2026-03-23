@@ -229,7 +229,7 @@ clickhouse:
   auth:
     database: devapm
     username: default
-    password: ""
+    password: "clickhouse@devapm"
     existingSecret: ""
     existingSecretKey: password
 
@@ -387,7 +387,7 @@ postgresql:
   auth:
     database: devapm
     username: devapm
-    password: ""
+    password: "postgres@devapm"
     existingSecret: ""
   primary:
     persistence:
