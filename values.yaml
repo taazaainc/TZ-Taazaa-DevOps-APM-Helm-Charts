@@ -214,7 +214,7 @@ beyla:
       servicePort: 8428
 
 # ClickHouse Operator (Altinity)
-clickhouse-operator:
+altinity-clickhouse-operator:
   enabled: true
 
 # ClickHouse installation config (read by templates/clickhouse/installation.yaml)

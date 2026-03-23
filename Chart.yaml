@@ -46,10 +46,10 @@ dependencies:
     condition: victoria-metrics-single.enabled
 
   # ClickHouse Operator (Altinity) — manages ClickhouseInstallation CRD
-  - name: clickhouse-operator
-    version: "0.23.5"
+  - name: altinity-clickhouse-operator
+    version: "0.26.1"
     repository: "https://altinity.github.io/clickhouse-operator/"
-    condition: clickhouse-operator.enabled
+    condition: altinity-clickhouse-operator.enabled
 
   # OpenTelemetry Collector — telemetry gateway pipeline
   - name: opentelemetry-collector
