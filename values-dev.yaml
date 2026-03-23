@@ -25,7 +25,7 @@ backend:
 ui:
   replicas: 1
   image:
-    tag: dev-18
+    tag: dev-19
 "victoria-metrics-single":
   server:
     persistentVolume:
