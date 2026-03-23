@@ -3,8 +3,13 @@
 
 global:
   imageRegistry: ""
-  imagePullSecrets: []
-  storageClass: ""
+  imagePullSecrets:
+    - harbor-pull-secret
+  storageClass: "nfs-client"
+  registry:
+    server: ""
+    username: ""
+    password: ""
 
 # Feature flags
 features:
@@ -195,7 +200,7 @@ beyla:
       search.maxConcurrentRequests: "8"
     persistentVolume:
       enabled: true
-      storageClass: ""
+      storageClass: "nfs-client"
       size: 50Gi
     resources:
       requests:
@@ -387,7 +392,7 @@ postgresql:
   primary:
     persistence:
       enabled: true
-      storageClass: ""
+      storageClass: "nfs-client"
       size: 10Gi
     resources:
       requests:
@@ -404,3 +409,17 @@ sensor:
     repository: ghcr.io/your-org/dev-apm-sensor
     tag: "1.0.0"
     pullPolicy: IfNotPresent
+
+# NFS Subdir External Provisioner — creates StorageClass "nfs-client"
+# All PVCs (VictoriaMetrics, ClickHouse, PostgreSQL) use this class automatically.
+# Set nfs.server and nfs.path per environment in values-<env>.yaml
+nfs-subdir-external-provisioner:
+  enabled: true
+  nfs:
+    server: ""      # override in values-<env>.yaml
+    path: ""        # override in values-<env>.yaml
+  storageClass:
+    name: nfs-client
+    defaultClass: true
+    reclaimPolicy: Retain
+    archiveOnDelete: false

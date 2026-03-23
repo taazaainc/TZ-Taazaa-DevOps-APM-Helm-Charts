@@ -1,6 +1,16 @@
 # dev environment — image tags updated automatically by CI pipeline
 # DO NOT edit image tags manually; they are managed by the build pipeline.
 
+global:
+  registry:
+    server: tcr.taazaa.cloud
+    # username and password go in values-dev-secrets.yaml (gitignored)
+
+nfs-subdir-external-provisioner:
+  nfs:
+    server: "taazaa-dev-shared-services.taazaahost.com"
+    path: "/datastore/apm-devops/dev"
+
 backend:
   replicas: 1
   autoscaling:
