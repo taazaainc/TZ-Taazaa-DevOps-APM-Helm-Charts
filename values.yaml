@@ -226,6 +226,7 @@ altinity-clickhouse-operator:
 # ClickHouse installation config (read by templates/clickhouse/installation.yaml)
 clickhouse:
   enabled: true
+  customDeploy: false   # operator manages deployment via ClickHouseInstallation CRD
   clusterName: devapm
   shardsCount: 1
   replicasCount: 1
