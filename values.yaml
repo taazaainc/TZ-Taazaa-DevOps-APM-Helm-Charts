@@ -238,6 +238,8 @@ opentelemetry-collector:
   enabled: true
   mode: deployment
   replicaCount: 2
+  image:
+    repository: otel/opentelemetry-collector-contrib
   resources:
     requests:
       cpu: 200m
