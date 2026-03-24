@@ -189,6 +189,10 @@ beyla:
       cpu: 500m
       memory: 512Mi
 
+# Custom VictoriaMetrics template disabled — sub-chart handles deployment
+victoriametrics:
+  enabled: false
+
 # VictoriaMetrics single-node
 "victoria-metrics-single":
   enabled: true
