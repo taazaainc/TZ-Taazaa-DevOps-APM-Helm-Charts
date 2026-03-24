@@ -4,15 +4,6 @@
 global:
   imagePullSecrets:
     - devops-tcr
-  registry:
-    server: ""
-    username: ""
-    password: ""   # leave empty — secret copied from devops namespace
-
-nfs-subdir-external-provisioner:
-  nfs:
-    server: "taazaa-dev-shared-services.taazaahost.com"
-    path: "/datastore/apm-devops/dev"
 
 backend:
   replicas: 1

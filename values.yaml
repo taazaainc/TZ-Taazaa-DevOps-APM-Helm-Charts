@@ -5,7 +5,7 @@ global:
   imageRegistry: ""
   imagePullSecrets:
     - harbor-pull-secret
-  storageClass: "nfs-client"
+  storageClass: ""   # uses cluster default (local-path on k3s)
   registry:
     server: ""
     username: ""
@@ -206,7 +206,7 @@ collector:
       search.maxConcurrentRequests: "8"
     persistentVolume:
       enabled: true
-      storageClass: "nfs-client"
+      storageClass: ""
       size: 50Gi
     resources:
       requests:
@@ -401,7 +401,7 @@ postgresql:
   primary:
     persistence:
       enabled: true
-      storageClass: "nfs-client"
+      storageClass: ""
       size: 10Gi
     resources:
       requests:
@@ -419,16 +419,3 @@ sensor:
     tag: "1.0.0"
     pullPolicy: IfNotPresent
 
-# NFS Subdir External Provisioner — creates StorageClass "nfs-client"
-# All PVCs (VictoriaMetrics, ClickHouse, PostgreSQL) use this class automatically.
-# Set nfs.server and nfs.path per environment in values-<env>.yaml
-nfs-subdir-external-provisioner:
-  enabled: true
-  nfs:
-    server: ""      # override in values-<env>.yaml
-    path: ""        # override in values-<env>.yaml
-  storageClass:
-    name: nfs-client
-    defaultClass: true
-    reclaimPolicy: Retain
-    archiveOnDelete: false
