@@ -3,8 +3,7 @@
 
 global:
   imageRegistry: ""
-  imagePullSecrets:
-    - harbor-pull-secret
+  imagePullSecrets: []
   storageClass: ""   # uses cluster default (local-path on k3s)
   registry:
     server: ""

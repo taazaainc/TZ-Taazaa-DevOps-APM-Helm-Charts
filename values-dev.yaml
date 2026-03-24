@@ -3,7 +3,7 @@
 
 global:
   imagePullSecrets:
-    - devops-tcr
+    - name: devops-tcr
 
 backend:
   replicas: 1
