@@ -2,9 +2,12 @@
 # DO NOT edit image tags manually; they are managed by the build pipeline.
 
 global:
+  imagePullSecrets:
+    - devops-tcr
   registry:
-    server: tcr.taazaa.cloud
-    # username and password go in values-dev-secrets.yaml (gitignored)
+    server: ""
+    username: ""
+    password: ""   # leave empty — secret copied from devops namespace
 
 nfs-subdir-external-provisioner:
   nfs:
