@@ -39,7 +39,8 @@ clickhouse:
 
 postgresql:
   image:
-    registry: registry.hub.docker.com
+    registry: docker.io
+    tag: "16"
   primary:
     persistence:
       size: 5Gi
