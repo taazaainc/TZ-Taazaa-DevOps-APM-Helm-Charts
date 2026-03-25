@@ -52,16 +52,4 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 9091
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /live
-              port: 9091
-            initialDelaySeconds: 15
-            periodSeconds: 30
 {{- end }}
