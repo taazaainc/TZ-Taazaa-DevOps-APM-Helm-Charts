@@ -59,9 +59,12 @@ spec:
                     command:
                       - /bin/bash
                       - -c
-                      - |
-                        sleep 10
-                        clickhouse-client --query "CREATE DATABASE IF NOT EXISTS {{ .Values.clickhouse.auth.database }}"
+                      - >-
+                        sleep 15 &&
+                        clickhouse-client
+                        --user={{ .Values.clickhouse.auth.username }}
+                        --password={{ .Values.clickhouse.auth.password }}
+                        --query="CREATE DATABASE IF NOT EXISTS {{ .Values.clickhouse.auth.database }}"
 
     volumeClaimTemplates:
       - name: data-volume
