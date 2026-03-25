@@ -15,7 +15,7 @@ ui:
   replicas: 1
   image:
     repository: tcr.taazaa.cloud/apm-dev/ui
-    tag: "dev-19"
+    tag: "dev-20"
 k8swatcher:
   image:
     repository: tcr.taazaa.cloud/apm-dev/k8swatcher
