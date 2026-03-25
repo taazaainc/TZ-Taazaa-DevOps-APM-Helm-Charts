@@ -31,7 +31,8 @@ clickhouse:
     size: 20Gi
 postgresql:
   image:
-    registry: docker.io
+    registry: ghcr.io
+    repository: bitnami/postgresql
     tag: "16"
   primary:
     persistence:
