@@ -1,6 +1,5 @@
 # dev environment — image tags updated automatically by CI pipeline
 # DO NOT edit image tags manually; they are managed by the build pipeline.
-
 global:
   imagePullSecrets:
     - name: devops-tcr
@@ -19,7 +18,7 @@ ui:
 k8swatcher:
   image:
     repository: tcr.taazaa.cloud/apm-dev/k8swatcher
-    tag: "dev-19"
+    tag: "dev-20"
 ingress:
   enabled: true
   host: dev-apm.dev.internal
