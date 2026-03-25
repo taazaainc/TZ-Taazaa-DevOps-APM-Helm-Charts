@@ -63,9 +63,5 @@ dependencies:
     repository: "https://grafana.github.io/helm-charts"
     condition: pyroscope.enabled
 
-  # PostgreSQL (Bitnami) — mutable config store: alert rules, dashboards, SLOs, RBAC
-  - name: postgresql
-    version: "15.5.23"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: postgresql.enabled
+  # PostgreSQL — managed via custom template using official postgres:16 image
 

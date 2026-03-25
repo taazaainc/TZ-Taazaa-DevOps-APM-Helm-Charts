@@ -30,10 +30,6 @@ clickhouse:
   storage:
     size: 20Gi
 postgresql:
-  image:
-    registry: tcr.taazaa.cloud
-    repository: shared/postgresql
-    tag: "16"
   primary:
     persistence:
       size: 5Gi
