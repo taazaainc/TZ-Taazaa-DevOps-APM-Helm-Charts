@@ -48,13 +48,14 @@ spec:
             - name: CLICKHOUSE_PASSWORD
               {{- include "dev-apm.clickhousePassword" . | nindent 14 }}
             # PostgreSQL — sub-chart service: {release}-postgresql
-            - name: POSTGRES_DSN
-              value: "postgres://{{ .Values.postgresql.auth.username }}:$(POSTGRES_PASSWORD)@{{ .Release.Name }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?sslmode=disable"
+            # POSTGRES_PASSWORD must be declared before POSTGRES_DSN for $(VAR) substitution to work
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ if .Values.postgresql.auth.existingSecret }}{{ .Values.postgresql.auth.existingSecret }}{{ else }}{{ .Release.Name }}-postgresql{{ end }}
                   key: password
+            - name: POSTGRES_DSN
+              value: "postgres://{{ .Values.postgresql.auth.username }}:$(POSTGRES_PASSWORD)@{{ .Release.Name }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?sslmode=disable"
             # Pyroscope
             - name: PYROSCOPE_URL
               value: {{ if .Values.pyroscope.enabled }}"http://{{ .Release.Name }}-pyroscope:4040"{{ else }}""{{ end }}
