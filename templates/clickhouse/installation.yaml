@@ -53,6 +53,15 @@ spec:
                 limits:
                   cpu: 4000m
                   memory: 8Gi
+              lifecycle:
+                postStart:
+                  exec:
+                    command:
+                      - /bin/bash
+                      - -c
+                      - |
+                        sleep 10
+                        clickhouse-client --query "CREATE DATABASE IF NOT EXISTS {{ .Values.clickhouse.auth.database }}"
 
     volumeClaimTemplates:
       - name: data-volume

@@ -38,6 +38,11 @@ clickhouse:
     size: 20Gi
 
 postgresql:
+  image:
+    registry: registry.hub.docker.com
   primary:
     persistence:
       size: 5Gi
+
+beyla:
+  enabled: false   # disable until attribute config is fixed
