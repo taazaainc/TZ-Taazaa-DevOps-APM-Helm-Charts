@@ -31,8 +31,8 @@ clickhouse:
     size: 20Gi
 postgresql:
   image:
-    registry: docker.io
-    repository: bitnami/postgresql
+    registry: tcr.taazaa.cloud
+    repository: shared/postgresql
     tag: "16"
   primary:
     persistence:
