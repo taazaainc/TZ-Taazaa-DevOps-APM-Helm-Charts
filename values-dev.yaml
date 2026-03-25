@@ -4,39 +4,32 @@
 global:
   imagePullSecrets:
     - name: devops-tcr
-
 backend:
   replicas: 1
   autoscaling:
     enabled: false
   image:
     repository: tcr.taazaa.cloud/apm-dev/backend
-    tag: "dev-19"
-
+    tag: "dev-20"
 ui:
   replicas: 1
   image:
     repository: tcr.taazaa.cloud/apm-dev/ui
     tag: "dev-19"
-
 k8swatcher:
   image:
     repository: tcr.taazaa.cloud/apm-dev/k8swatcher
     tag: "dev-19"
-
 ingress:
   enabled: true
   host: dev-apm.dev.internal
-
 "victoria-metrics-single":
   server:
     persistentVolume:
       size: 10Gi
-
 clickhouse:
   storage:
     size: 20Gi
-
 postgresql:
   image:
     registry: docker.io
@@ -44,6 +37,5 @@ postgresql:
   primary:
     persistence:
       size: 5Gi
-
 beyla:
-  enabled: false   # disable until attribute config is fixed
+  enabled: false # disable until attribute config is fixed
