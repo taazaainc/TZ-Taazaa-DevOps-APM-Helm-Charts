@@ -18,7 +18,7 @@ ui:
 k8swatcher:
   image:
     repository: tcr.taazaa.cloud/apm-dev/k8swatcher
-    tag: "dev-20"
+    tag: "dev-21"
 ingress:
   enabled: true
   host: dev-apm.dev.internal
