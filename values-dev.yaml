@@ -21,7 +21,7 @@ k8swatcher:
     tag: "dev-21"
 ingress:
   enabled: true
-  host: dev-apm.dev.internal
+  host: devops-internal.taazaahost.com
 "victoria-metrics-single":
   server:
     persistentVolume:
