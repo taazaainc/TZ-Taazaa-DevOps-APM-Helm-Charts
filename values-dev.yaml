@@ -9,7 +9,7 @@ backend:
     enabled: false
   image:
     repository: tcr.taazaa.cloud/apm-dev/backend
-    tag: "dev-21"
+    tag: "dev-25"
 ui:
   replicas: 1
   image:
