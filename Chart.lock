@@ -1,0 +1,18 @@
+dependencies:
+- name: beyla
+  repository: https://grafana.github.io/helm-charts
+  version: 1.4.2
+- name: victoria-metrics-single
+  repository: https://victoriametrics.github.io/helm-charts/
+  version: 0.9.23
+- name: altinity-clickhouse-operator
+  repository: https://altinity.github.io/clickhouse-operator/
+  version: 0.26.1
+- name: opentelemetry-collector
+  repository: https://open-telemetry.github.io/opentelemetry-helm-charts
+  version: 0.110.0
+- name: pyroscope
+  repository: https://grafana.github.io/helm-charts
+  version: 1.7.1
+digest: sha256:2bb029b1afb74ce2fd72ba668536adc3abf07bbe88e70bddacd769d016374866
+generated: "2026-03-27T11:37:29.848034846+05:30"
